@@ -1,0 +1,16 @@
+# Dépendances
+node_modules/
+npm-debug.log*
+
+# Compilation TypeScript
+dist/
+*.tsbuildinfo
+
+# Environnement & Secrets
+.env
+.env.local
+.env.stacktrace
+
+# OS & Divers
+.DS_Store
+thumbs.db
