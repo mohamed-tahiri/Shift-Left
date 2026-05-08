@@ -1,0 +1,58 @@
+name: CI-CD DevSecOps Shift-Left
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ÉTAPE 1 : Analyse de sécurité du code source
+  security_analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Important pour le scan de secrets sur tout l'historique
+
+      # Scan des secrets (TruffleHog) [cite: 71, 74]
+      - name: Secret Scan (TruffleHog)
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.before }}
+          head: ${{ github.sha }}
+          extra_args: --only-verified
+
+      # Analyse de la qualité et vulnérabilités (SAST) [cite: 71, 75, 76]
+      # Note: Nécessite un SONAR_TOKEN configuré dans les secrets GitHub
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # ÉTAPE 2 : Construction et Scan de l'image Docker
+  build_and_scan:
+    needs: security_analysis # Ne démarre que si l'analyse de code est OK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Construction de l'image Docker [cite: 78, 92]
+      - name: Build Docker Image
+        run: docker build -t devsecops-api:${{ github.sha }} .
+
+      # Scan de l'image Docker (SCA) avec Trivy [cite: 72, 79, 80, 84]
+      - name: Scan Image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'devsecops-api:${{ github.sha }}'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1' # Fait échouer le pipeline si des failles critiques sont trouvées [cite: 80]
+      # ÉTAPE 3 : Simulation de déploiement (Si tout est vert) [cite: 81]
+      - name: Push Image (Simulation)
+        run: echo "L'image est propre et sécurisée. Prête pour le déploiement !"
