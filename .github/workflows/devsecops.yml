@@ -53,3 +53,39 @@ jobs:
           echo "Analyse effectuée sur l'image : devsecops-api:${{ github.sha }}"
       - name: Push Image (Simulation)
         run: echo "L'image est propre et sécurisée. Prête pour le déploiement !"
+
+  deploy:
+    needs: build_and_scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-3
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, Tag and Push to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: devsecops-api
+          IMAGE_TAG: latest
+        run: |
+          docker build --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Update AWS Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name devsecops-api-lambda \
+            --image-uri ${{ steps.login-ecr.outputs.registry }}/devsecops-api:latest \
+            --region eu-west-3
