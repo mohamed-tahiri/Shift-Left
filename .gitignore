@@ -1,38 +1,16 @@
-# Dépendances
-node_modules/
-npm-debug.log*
-
-# Compilation TypeScript
-dist/
-*.tsbuildinfo
-
-# Environnement & Secrets
-.env
-.env.local
-.env.stacktrace
-
-# OS & Divers
-.DS_Store
-thumbs.db
-
 # Terraform
 .terraform/
 *.tfstate
-*.tfstate.*
-crash.log
+*.tfstate.backup
+.terraform.lock.hcl
 
-# Variables sensibles
-terraform.tfvars
-*.auto.tfvars
+# Node / JS
+node_modules/
+dist/
+npm-debug.log
 
-# Plans terraform
-*.tfplan
+# Docker
+.dockerignore
 
-# Override files
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
-
-# Terraform lock (optionnel)
-# .terraform.lock.hcl
+# OS
+.DS_Store

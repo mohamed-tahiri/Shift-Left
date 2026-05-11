@@ -8,7 +8,7 @@ const FAKE_API_KEY = "SG.x9832148901234.FAKE_KEY_FOR_TESTING";
 
 app.get('/', (req: Request, res: Response) => {
   res.json({
-    message: "Bienvenue sur l'API Sécurisée!",
+    message: "Bienvenue sur l'API Sécurisée! Voici une clé API fictive pour les tests :",
     apiKey: FAKE_API_KEY,
     status: "EN LIGNE",
   });
