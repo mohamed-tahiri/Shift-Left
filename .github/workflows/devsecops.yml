@@ -24,7 +24,7 @@ jobs:
           extra_args: --only-verified
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v5 
+        uses: SonarSource/sonarqube-scan-action@v6 # Mise à jour vers v6 recommandée
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }} 
@@ -36,8 +36,9 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # Build forcé en amd64 pour la compatibilité Lambda 
       - name: Build Docker Image
-        run: docker build -t devsecops-api:${{ github.sha }} .
+        run: docker build --platform linux/amd64 -t devsecops-api:${{ github.sha }} .
 
       - name: Scan Image with Trivy
         uses: aquasecurity/trivy-action@master
@@ -45,14 +46,7 @@ jobs:
           image-ref: 'devsecops-api:${{ github.sha }}'
           format: 'table'
           severity: 'CRITICAL,HIGH'
-          exit-code: '0'
-      - name: Generate Security Summary
-        if: always() # S'exécute même si le scan échoue
-        run: |
-          echo "## 🛡️ Rapport de Sécurité Trivy" >> $GITHUB_STEP_SUMMARY
-          echo "Analyse effectuée sur l'image : devsecops-api:${{ github.sha }}"
-      - name: Push Image (Simulation)
-        run: echo "L'image est propre et sécurisée. Prête pour le déploiement !"
+          exit-code: '1' # Bloque le pipeline en cas de faille réelle
 
   deploy:
     needs: build_and_scan
@@ -79,9 +73,9 @@ jobs:
           ECR_REPOSITORY: devsecops-api
           IMAGE_TAG: latest
         run: |
+          # Construction et Push forcés en amd64 
           docker build --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
       - name: Update AWS Lambda
         run: |
