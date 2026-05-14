@@ -13,7 +13,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 
+          fetch-depth: 0
 
       - name: Secret Scan (TruffleHog)
         uses: trufflesecurity/trufflehog@main
@@ -24,10 +24,10 @@ jobs:
           extra_args: --only-verified
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v6 # Mise à jour vers v6 recommandée
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }} 
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   build_and_scan:
     needs: security_analysis
@@ -36,8 +36,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Build forcé en amd64 pour la compatibilité Lambda 
-      - name: Build Docker Image
+      - name: Build Docker Image (amd64)
         run: docker build --platform linux/amd64 -t devsecops-api:${{ github.sha }} .
 
       - name: Scan Image with Trivy
@@ -67,14 +66,14 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, Tag and Push to ECR
+      - name: Build, Tag and Push to ECR (amd64)
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: devsecops-api
           IMAGE_TAG: latest
         run: |
-          # Construction et Push forcés en amd64 
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build --platform linux/amd64 \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Update AWS Lambda
@@ -82,4 +81,10 @@ jobs:
           aws lambda update-function-code \
             --function-name devsecops-api-lambda \
             --image-uri ${{ steps.login-ecr.outputs.registry }}/devsecops-api:latest \
+            --region eu-west-3
+
+      - name: Wait for Lambda update
+        run: |
+          aws lambda wait function-updated \
+            --function-name devsecops-api-lambda \
             --region eu-west-3
