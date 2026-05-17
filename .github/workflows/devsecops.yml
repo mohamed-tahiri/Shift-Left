@@ -22,6 +22,14 @@ jobs:
           base: ${{ github.event.before }}
           head: ${{ github.sha }}
           extra_args: --only-verified
+        
+      - name: IaC Security Scan (Checkov)
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform/
+          framework: terraform
+          soft_fail: false 
+          output_format: cli
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v6
@@ -36,7 +44,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Build Docker Image (amd64)
+      - name: Build Docker Image (amd64) 
         run: docker build --platform linux/amd64 -t devsecops-api:${{ github.sha }} .
 
       - name: Scan Image with Trivy
